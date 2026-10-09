@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TVET Water Quality Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      background: #f0f4f8;
+      color: #1f2328;
+    }
+
+    header {
+      background: #1e3a5f;
+      color: #fff;
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    header svg { flex-shrink: 0; }
+    header h1 { font-size: 20px; font-weight: 700; letter-spacing: .3px; }
+    header p  { font-size: 12px; color: #a8c4e0; margin-top: 2px; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 860px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 560px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .kpi-card {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      padding: 16px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .kpi-label  { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: #57606a; }
+    .kpi-value  { font-size: 26px; font-weight: 700; line-height: 1.1; }
+    .kpi-unit   { font-size: 12px; color: #57606a; }
+    .kpi-status {
+      margin-top: 6px;
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .status-ok      { background: #dcfce7; color: #166534; }
+    .status-warning { background: #fef9c3; color: #854d0e; }
+    .status-danger  { background: #fee2e2; color: #991b1b; }
+
+    .kpi-temp  .kpi-value { color: #ef4444; }
+    .kpi-ph    .kpi-value { color: #3b82f6; }
+    .kpi-do    .kpi-value { color: #22c55e; }
+    .kpi-amm   .kpi-value { color: #f59e0b; }
+    .kpi-turb  .kpi-value { color: #8b5cf6; }
+
+    /* Section headers */
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e3a5f;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #dbeafe;
+    }
+
+    /* Charts */
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      padding: 18px 16px 10px;
+    }
+    .chart-card h3 { font-size: 13px; font-weight: 600; color: #1e3a5f; margin-bottom: 10px; }
+
+    svg.sparkline { width: 100%; height: 80px; }
+    .axis-label { font-size: 10px; fill: #57606a; }
+
+    /* 30-Day Checklist Table */
+    .table-card {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+      padding: 20px 18px;
+      margin-bottom: 28px;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    thead tr { background: #1e3a5f; color: #fff; }
+    thead th {
+      padding: 9px 10px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    thead th:first-child { text-align: left; }
+    tbody tr:nth-child(even) { background: #f7f8fa; }
+    tbody tr:hover { background: #eff6ff; }
+    tbody td {
+      padding: 7px 10px;
+      text-align: center;
+      border-bottom: 1px solid #e5e7eb;
+      vertical-align: middle;
+    }
+    tbody td:first-child { text-align: left; font-weight: 600; color: #1e3a5f; }
+
+    input[type="checkbox"] {
+      width: 15px; height: 15px;
+      accent-color: #1e3a5f;
+      cursor: pointer;
+    }
+
+    .legend-row {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+      font-size: 12px;
+      color: #57606a;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* Range reference */
+    .range-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .range-table th, .range-table td { padding: 7px 12px; border: 1px solid #e5e7eb; text-align: center; }
+    .range-table thead { background: #1e3a5f; color: #fff; }
+    .range-table tbody tr:nth-child(even) { background: #f7f8fa; }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: #57606a;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 14px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+    <circle cx="19" cy="19" r="19" fill="#2563eb" opacity=".25"/>
+    <path d="M19 8c0 0-8 6.5-8 13a8 8 0 0016 0C27 14.5 19 8 19 8z" fill="#60a5fa"/>
+    <path d="M19 14c0 0-4 3.5-4 7a4 4 0 008 0c0-3.5-4-7-4-7z" fill="#fff"/>
+  </svg>
+  <div>
+    <h1>TVET Water Quality Monitoring Dashboard</h1>
+    <p>Aquaculture / Environmental Science — Daily Parameter Tracking</p>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- KPI CARDS -->
+  <div class="section-title">📊 Current Readings</div>
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-temp">
+      <span class="kpi-label">Temperature</span>
+      <span class="kpi-value">27.4</span>
+      <span class="kpi-unit">°C</span>
+      <span class="kpi-status status-ok">✓ Normal</span>
+    </div>
+    <div class="kpi-card kpi-ph">
+      <span class="kpi-label">pH</span>
+      <span class="kpi-value">7.2</span>
+      <span class="kpi-unit">pH units</span>
+      <span class="kpi-status status-ok">✓ Normal</span>
+    </div>
+    <div class="kpi-card kpi-do">
+      <span class="kpi-label">Dissolved O₂</span>
+      <span class="kpi-value">6.8</span>
+      <span class="kpi-unit">mg/L</span>
+      <span class="kpi-status status-ok">✓ Normal</span>
+    </div>
+    <div class="kpi-card kpi-amm">
+      <span class="kpi-label">Ammonia</span>
+      <span class="kpi-value">0.4</span>
+      <span class="kpi-unit">mg/L</span>
+      <span class="kpi-status status-warning">⚠ Monitor</span>
+    </div>
+    <div class="kpi-card kpi-turb">
+      <span class="kpi-label">Turbidity</span>
+      <span class="kpi-value">18</span>
+      <span class="kpi-unit">NTU</span>
+      <span class="kpi-status status-ok">✓ Normal</span>
+    </div>
+  </div>
+
+  <!-- SPARKLINE CHARTS -->
+  <div class="section-title">📈 7-Day Trend Overview</div>
+  <div class="charts-grid">
+
+    <div class="chart-card">
+      <h3>🌡 Temperature (°C) — Last 7 Days</h3>
+      <svg class="sparkline" viewBox="0 0 300 80" preserveAspectRatio="none">
+        <polyline points="0,45 43,38 86,30 129,35 172,28 215,32 258,26 300,22"
+          fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linejoin="round"/>
+        <polyline points="0,45 43,38 86,30 129,35 172,28 215,32 258,26 300,22 300,75 0,75"
+          fill="#ef4444" opacity=".1"/>
+        <line x1="0" y1="75" x2="300" y2="75" stroke="#e5e7eb" stroke-width="1"/>
+        <text x="0" y="74" class="axis-label">25°</text>
+        <text x="252" y="74" class="axis-label">31°</text>
+      </svg>
+    </div>
+
+    <div class="chart-card">
+      <h3>⚗ pH — Last 7 Days</h3>
+      <svg class="sparkline" viewBox="0 0 300 80" preserveAspectRatio="none">
+        <polyline points="0,40 43,35 86,42 129,30 172,28 215,35 258,32 300,30"
+          fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linejoin="round"/>
+        <polyline points="0,40 43,35 86,42 129,30 172,28 215,35 258,32 300,30 300,75 0,75"
+          fill="#3b82f6" opacity=".1"/>
+        <line x1="0" y1="75" x2="300" y2="75" stroke="#e5e7eb" stroke-width="1"/>
+        <text x="0" y="74" class="axis-label">6.5</text>
+        <text x="264" y="74" class="axis-label">8.5</text>
+      </svg>
+    </div>
+
+    <div class="chart-card">
+      <h3>💧 Dissolved O₂ (mg/L) — Last 7 Days</h3>
+      <svg class="sparkline" viewBox="0 0 300 80" preserveAspectRatio="none">
+        <polyline points="0,42 43,35 86,28 129,38 172,32 215,40 258,30 300,25"
+          fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linejoin="round"/>
+        <polyline points="0,42 43,35 86,28 129,38 172,32 215,40 258,30 300,25 300,75 0,75"
+          fill="#22c55e" opacity=".1"/>
+        <line x1="0" y1="75" x2="300" y2="75" stroke="#e5e7eb" stroke-width="1"/>
+        <text x="0" y="74" class="axis-label">4</text>
+        <text x="274" y="74" class="axis-label">9</text>
+      </svg>
+    </div>
+
+    <div class="chart-card">
+      <h3>⚠ Ammonia (mg/L) — Last 7 Days</h3>
+      <svg class="sparkline" viewBox="0 0 300 80" preserveAspectRatio="none">
+        <polyline points="0,60 43,55 86,45 129,50 172,40 215,55 258,48 300,42"
+          fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linejoin="round"/>
+        <polyline points="0,60 43,55 86,45 129,50 172,40 215,55 258,48 300,42 300,75 0,75"
+          fill="#f59e0b" opacity=".1"/>
+        <line x1="0" y1="30" x2="300" y2="30" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+        <text x="252" y="28" class="axis-label" fill="#ef4444">max</text>
+        <line x1="0" y1="75" x2="300" y2="75" stroke="#e5e7eb" stroke-width="1"/>
+        <text x="0" y="74" class="axis-label">0</text>
+        <text x="264" y="74" class="axis-label">1.0</text>
+      </svg>
+    </div>
+
+    <div class="chart-card" style="grid-column: span 2;">
+      <h3>🌊 Turbidity (NTU) — Last 7 Days</h3>
+      <svg style="width:100%;height:80px;" viewBox="0 0 600 80" preserveAspectRatio="none">
+        <polyline points="0,48 86,42 172,35 258,50 344,38 430,30 516,42 600,36"
+          fill="none" stroke="#8b5cf6" stroke-width="2.5" stroke-linejoin="round"/>
+        <polyline points="0,48 86,42 172,35 258,50 344,38 430,30 516,42 600,36 600,75 0,75"
+          fill="#8b5cf6" opacity=".1"/>
+        <line x1="0" y1="75" x2="600" y2="75" stroke="#e5e7eb" stroke-width="1"/>
+        <text x="0" y="74" class="axis-label">0</text>
+        <text x="558" y="74" class="axis-label">50 NTU</text>
+      </svg>
+    </div>
+
+  </div>
+
+  <!-- 30-DAY CHECKLIST TABLE -->
+  <div class="section-title">📋 30-Day Daily Monitoring Checklist</div>
+
+  <div class="legend-row">
+    <span class="legend-item"><span class="legend-dot" style="background:#166534"></span> ✓ = Reading recorded &amp; within range</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#854d0e"></span> ⚠ = Check column for notes if unchecked</span>
+    <span>Tick each cell after taking and recording the daily measurement.</span>
+  </div>
+
+  <div class="table-card">
+    <table id="checklist">
+      <thead>
+        <tr>
+          <th>Day / Date</th>
+          <th>🌡 Temp (°C)</th>
+          <th>⚗ pH</th>
+          <th>💧 DO (mg/L)</th>
+          <th>⚠ Ammonia (mg/L)</th>
+          <th>🌊 Turbidity (NTU)</th>
+          <th>All OK?</th>
+        </tr>
+      </thead>
+      <tbody id="checklistBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ACCEPTABLE RANGE REFERENCE -->
+  <div class="section-title">📚 Acceptable Parameter Ranges (Reference)</div>
+  <div class="table-card" style="overflow-x:auto;">
+    <table class="range-table">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Unit</th>
+          <th>Optimal Range</th>
+          <th>Warning Threshold</th>
+          <th>Critical Threshold</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Temperature</strong></td>
+          <td>°C</td>
+          <td>25 – 30</td>
+          <td>&lt; 22 or &gt; 32</td>
+          <td>&lt; 18 or &gt; 35</td>
+          <td>Fish species–dependent</td>
+        </tr>
+        <tr>
+          <td><strong>pH</strong></td>
+          <td>pH units</td>
+          <td>6.5 – 8.5</td>
+          <td>&lt; 6.0 or &gt; 9.0</td>
+          <td>&lt; 5.5 or &gt; 10</td>
+          <td>Morning lowest, afternoon highest</td>
+        </tr>
+        <tr>
+          <td><strong>Dissolved O₂</strong></td>
+          <td>mg/L</td>
+          <td>≥ 5.0</td>
+          <td>3.0 – 4.9</td>
+          <td>&lt; 3.0</td>
+          <td>Aerate if &lt; 4 mg/L</td>
+        </tr>
+        <tr>
+          <td><strong>Ammonia (NH₃)</strong></td>
+          <td>mg/L</td>
+          <td>&lt; 0.5</td>
+          <td>0.5 – 1.0</td>
+          <td>&gt; 1.0</td>
+          <td>Toxic to fish at elevated pH</td>
+        </tr>
+        <tr>
+          <td><strong>Turbidity</strong></td>
+          <td>NTU</td>
+          <td>20 – 40</td>
+          <td>&lt; 10 or &gt; 50</td>
+          <td>&gt; 80</td>
+          <td>Affects light penetration</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<footer style="max-width:1100px;margin:0 auto 24px;padding:0 20px;">
+  Made with IBM Bob
+</footer>
+
+<script>
+  const tbody = document.getElementById('checklistBody');
+  const today = new Date();
+
+  for (let d = 1; d <= 30; d++) {
+    const date = new Date(today.getFullYear(), today.getMonth(), d);
+    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+    const isPast = d < today.getDate();
+
+    const row = document.createElement('tr');
+    row.id = 'row-' + d;
+
+    const dayCell = document.createElement('td');
+    dayCell.innerHTML = '<strong>Day ' + String(d).padStart(2,'0') + '</strong><br><span style="font-size:11px;color:#57606a;">' + dateStr + '</span>';
+    row.appendChild(dayCell);
+
+    const params = ['temp','ph','do','amm','turb'];
+    params.forEach(function(p) {
+      const td = document.createElement('td');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = 'cb-' + d + '-' + p;
+      if (isPast) cb.checked = Math.random() > 0.15;
+      cb.addEventListener('change', function() { updateRowStatus(d); });
+      td.appendChild(cb);
+      row.appendChild(td);
+    });
+
+    const summaryTd = document.createElement('td');
+    summaryTd.id = 'summary-' + d;
+    row.appendChild(summaryTd);
+    tbody.appendChild(row);
+    updateRowStatus(d);
+  }
+
+  function updateRowStatus(d) {
+    const params = ['temp','ph','do','amm','turb'];
+    const all = params.every(function(p) { return document.getElementById('cb-' + d + '-' + p) && document.getElementById('cb-' + d + '-' + p).checked; });
+    const any = params.some(function(p) { return document.getElementById('cb-' + d + '-' + p) && document.getElementById('cb-' + d + '-' + p).checked; });
+    const cell = document.getElementById('summary-' + d);
+    if (all) {
+      cell.innerHTML = '<span style="background:#dcfce7;color:#166534;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">✓ Done</span>';
+    } else if (any) {
+      cell.innerHTML = '<span style="background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">⏳ Partial</span>';
+    } else {
+      cell.innerHTML = '<span style="background:#f3f4f6;color:#57606a;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">— Pending</span>';
+    }
+  }
+</script>
+
+</body>
+</html>
